@@ -3,6 +3,7 @@ int minVal[] = {32, 32, 32, 32, 32, 32, 32, 33};
 int maxVal[] = {667, 788, 801, 805, 806, 812, 817, 825};
 int pos[] = {1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000};
 float lastError = 0;
+float lastPosition = 4500; 
 
 const int AIN1 = 5;
 const int AIN2 = 4;
@@ -64,31 +65,38 @@ void loop() {
     active += normalized;
   }
 
-  if (active < 500) {
-    drive(90, 90);
+  if (active < 150) { 
     digitalWrite(LED, LOW);
-    return;
+    
+    if (lastPosition < 4350) {
+      drive(180, 0); 
+    } 
+    else if (lastPosition > 4650) {
+      drive(0, 180); 
+    } 
+    else {
+      drive(100, 100); 
+    }
+    return; 
   }
 
-  float position = (float)sum / active;
-  float error = 4500 - position;
-  
-  float kp = -0.045;
-  float kd = -0.022;
+  digitalWrite(LED, HIGH);
 
+  float position = (float)sum / active;
+  lastPosition = position; 
+
+  float error = 4500 - position; 
+  
+  float kp = -0.043; 
+  float kd = -0.025;
 
   int turn = (kp * error) + (kd * (error - lastError));
   lastError = error;
-  int sp = 150;
-  int baseSpeed = sp - abs(turn) ;
-  if (baseSpeed < 40) baseSpeed = 40;
-  if (baseSpeed > sp) baseSpeed = sp;
 
+  int baseSpeed = 180;
   int leftSpeed = baseSpeed - turn;
   int rightSpeed = baseSpeed + turn;
 
   drive(leftSpeed, rightSpeed);
-  digitalWrite(LED, HIGH);
-
-  delay(20);
+  delay(5); 
 }
