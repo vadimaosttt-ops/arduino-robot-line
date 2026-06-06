@@ -69,17 +69,17 @@ void loop() {
     digitalWrite(LED, LOW);
     
     if (lastPosition < 4350) {
-      drive(180, 0); 
+      drive(200, 0); 
     } 
     else if (lastPosition > 4650) {
-      drive(0, 180); 
+      drive(0, 200); 
     } 
     else {
       drive(100, 100); 
     }
     return; 
   }
-
+  
   digitalWrite(LED, HIGH);
 
   float position = (float)sum / active;
@@ -87,13 +87,13 @@ void loop() {
 
   float error = 4500 - position; 
   
-  float kp = -0.043; 
-  float kd = -0.025;
+  float kp = -0.03;
+  float kd = -0.07qz5;
 
   int turn = (kp * error) + (kd * (error - lastError));
   lastError = error;
 
-  int baseSpeed = 180;
+  int baseSpeed = 230;
   int leftSpeed = baseSpeed - turn;
   int rightSpeed = baseSpeed + turn;
 
