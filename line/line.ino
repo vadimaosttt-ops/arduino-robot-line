@@ -1,12 +1,11 @@
-// Робот по линии.
+// adv1
 
-// Датчики линии (A0..A7)
 int sensors[] = {0, 1, 2, 3, 4, 5, 6, 7};
-int minVal[] = {32, 32, 32, 32, 32, 32, 32, 33};          // чёрное
-int maxVal[] = {667, 788, 801, 805, 806, 812, 817, 825};  // белое
-int pos[] = {1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000};  // 4500 = центр
+int minVal[] = {32, 32, 32, 32, 32, 32, 32, 33};          // black
+int maxVal[] = {667, 788, 801, 805, 806, 812, 817, 825};  // white
+int pos[] = {1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000};  // 4500 = mid
 
-// Моторы
+// motors
 const int AIN1 = 5;
 const int AIN2 = 4;
 const int PWMA = 3;
@@ -15,7 +14,7 @@ const int BIN2 = 7;
 const int PWMB = 11;
 const int LED = 13;
 
-// ПИД
+// PID
 float lastError = 0;
 float lastPosition = 4500;
 float kp = -0.03;
@@ -36,7 +35,7 @@ void setup() {
   }
 }
 
-// leftSpeed/rightSpeed: -255..255, минус = назад
+// left/rightSpeed: 
 void drive(int leftSpeed, int rightSpeed) {
   leftSpeed = constrain(leftSpeed, -255, 255);
   rightSpeed = constrain(rightSpeed, -255, 255);
