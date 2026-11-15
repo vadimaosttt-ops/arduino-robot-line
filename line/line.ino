@@ -1,4 +1,4 @@
-// Робот по линии: каркас. Езду по линии пишешь сам в loop().
+// Робот по линии.
 
 // Датчики линии (A0..A7)
 int sensors[] = {0, 1, 2, 3, 4, 5, 6, 7};
@@ -20,7 +20,7 @@ float lastError = 0;
 float lastPosition = 4500;
 float kp = -0.03;
 float kd = -0.075;
-int baseSpeed = 230;
+int baseSpeed = 180;
 
 void setup() {
   pinMode(AIN1, OUTPUT);
@@ -63,8 +63,34 @@ void drive(int leftSpeed, int rightSpeed) {
 }
 
 void loop() {
-  float error = 0;  // TODO: 4500 - position
+  long sum = 0;
+  long active = 0;
+
+  for (int i = 0; i < 8; i++) {
+    int val = analogRead(sensors[i]);
+    int norm = map(val, minVal[i], maxVal[i], 0, 1000);
+    norm = constrain(norm, 0, 1000);
+    sum += (long)norm * pos[i];
+    active += norm;
+  }
+
+  float error;
+
+  if (active < 150) {
+    // линия потеряна — доворачиваем туда, где видели её последний раз
+    error = (lastPosition < 4500) ? 1500 : -1500;
+  } else {
+    float position = (float)sum / active;
+    lastPosition = position;
+    error = 4500 - position;
+  }
 
   int turn = (kp * error) + (kd * (error - lastError));
   lastError = error;
+  turn = constrain(turn, -200, 200);
+
+  digitalWrite(LED, active >= 150);
+
+  drive(baseSpeed - turn, baseSpeed + turn);
+  delay(5);
 }
