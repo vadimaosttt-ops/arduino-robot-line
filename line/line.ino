@@ -1,36 +1,70 @@
+// ============================================================
+//  РОБОТ ПО ЛИНИИ — заготовка
+//  Оставлено: объявления переменных, setup(), drive(), ПИД.
+//  Езду по линии пишешь сам в loop() (см. TODO внизу).
+// ============================================================
+
+// ---------- 1. ДАТЧИКИ ЛИНИИ ----------
+// sensors[i] — номер аналогового входа (A0..A7) для i-го датчика
 int sensors[] = {0, 1, 2, 3, 4, 5, 6, 7};
+
+// minVal/maxVal — показания АЦП на ЧЁРНОМ и на БЕЛОМ.
+// Значения сняты скетчем calibration: подставь свои, иначе нормализация врёт.
 int minVal[] = {32, 32, 32, 32, 32, 32, 32, 33};
 int maxVal[] = {667, 788, 801, 805, 806, 812, 817, 825};
-int pos[] = {1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000};
-float lastError = 0;
-float lastPosition = 4500; 
 
-const int AIN1 = 5;
-const int AIN2 = 4;
-const int PWMA = 3;
-const int BIN1 = 6;
-const int BIN2 = 7;
-const int PWMB = 11;
-const int LED = 13;
+// pos[i] — "вес" (координата) каждого датчика в условных единицах.
+// Крайние датчики = 1000 и 8000, значит центр линии = 4500.
+int pos[] = {1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000};
+
+// ---------- 2. ПИНЫ МОТОРОВ ----------
+const int AIN1 = 5;   // левый мотор: направление
+const int AIN2 = 4;   // левый мотор: направление
+const int PWMA = 3;   // левый мотор: скорость (ШИМ)
+const int BIN1 = 6;   // правый мотор: направление
+const int BIN2 = 7;   // правый мотор: направление
+const int PWMB = 11;  // правый мотор: скорость (ШИМ)
+const int LED = 13;   // встроенный светодиод — индикатор "вижу линию"
+
+// ---------- 3. ПЕРЕМЕННЫЕ ПИД ----------
+float lastError = 0;      // ошибка на предыдущем шаге (для D-составляющей)
+float lastPosition = 4500; // последняя позиция линии (4500 = по центру)
+
+// ---------- 4. КОЭФФИЦИЕНТЫ ПИД ----------
+float kp = -0.03;   // P: насколько сильно рулить от текущего отклонения
+float kd = -0.075;  // D: гасит раскачку (реагирует на скорость изменения ошибки)
+
+// ---------- 5. НАСТРОЙКИ ----------
+int baseSpeed = 230;  // базовая скорость моторов, 0..255
 
 void setup() {
-  pinMode(LED, OUTPUT);
+  // Моторы — выходы
   pinMode(AIN1, OUTPUT);
   pinMode(AIN2, OUTPUT);
   pinMode(PWMA, OUTPUT);
   pinMode(BIN1, OUTPUT);
   pinMode(BIN2, OUTPUT);
   pinMode(PWMB, OUTPUT);
+  pinMode(LED, OUTPUT);
 
+  // Датчики линии — аналоговые входы
   for (int i = 0; i < 8; i++) {
     pinMode(sensors[i], INPUT);
   }
 }
 
+// ------------------------------------------------------------
+//  drive(leftSpeed, rightSpeed)
+//  Задаёт скорость колёс: -255..255.
+//  Плюс = вперёд, минус = назад, 0 = стоп.
+//  Внутри: знак задаёт направление (AIN1/AIN2, BIN1/BIN2),
+//  модуль — скважность ШИМ (PWMA/PWMB).
+// ------------------------------------------------------------
 void drive(int leftSpeed, int rightSpeed) {
   leftSpeed = constrain(leftSpeed, -255, 255);
   rightSpeed = constrain(rightSpeed, -255, 255);
 
+  // Левый мотор
   if (leftSpeed >= 0) {
     digitalWrite(AIN2, 1);
     digitalWrite(AIN1, 0);
@@ -41,6 +75,7 @@ void drive(int leftSpeed, int rightSpeed) {
     analogWrite(PWMA, -leftSpeed);
   }
 
+  // Правый мотор
   if (rightSpeed >= 0) {
     digitalWrite(BIN1, 0);
     digitalWrite(BIN2, 1);
@@ -53,50 +88,23 @@ void drive(int leftSpeed, int rightSpeed) {
 }
 
 void loop() {
-  long sum = 0;
-  long active = 0;
+  // ============================================================
+  //  ПИД-РЕГУЛЯТОР
+  // ============================================================
+  // error — отклонение от центра линии.
+  //   error > 0  -> линия левее центра
+  //   error < 0  -> линия правее центра
+  //   error = 0  -> едем прямо
+  // TODO: посчитать самому. Например:
+  //   error = 4500 - position;
+  float error = 0;
 
-  for (int i = 0; i < 8; i++) {
-    int val = analogRead(sensors[i]);
-    int normalized = map(val, minVal[i], maxVal[i], 0, 1000);
-    normalized = constrain(normalized, 0, 1000);
-
-    sum += (long)normalized * pos[i];
-    active += normalized;
-  }
-
-  if (active < 150) { 
-    digitalWrite(LED, LOW);
-    
-    if (lastPosition < 4350) {
-      drive(200, 0); 
-    } 
-    else if (lastPosition > 4650) {
-      drive(0, 200); 
-    } 
-    else {
-      drive(100, 100); 
-    }
-    return; 
-  }
-  
-  digitalWrite(LED, HIGH);
-
-  float position = (float)sum / active;
-  lastPosition = position; 
-
-  float error = 4500 - position; 
-  
-  float kp = -0.03;
-  float kd = -0.07qz5;
-
+  // P — тянет руль пропорционально отклонению
+  // D — тормозит руль, чтобы не болтало из стороны в сторону
   int turn = (kp * error) + (kd * (error - lastError));
-  lastError = error;
+  lastError = error;  // запомнили ошибку для следующего шага
 
-  int baseSpeed = 230;
-  int leftSpeed = baseSpeed - turn;
-  int rightSpeed = baseSpeed + turn;
-
-  drive(leftSpeed, rightSpeed);
-  delay(5); 
+  // TODO: здесь твоя езда по линии.
+  // Обычно так:
+  //   drive(baseSpeed - turn, baseSpeed + turn);
 }
